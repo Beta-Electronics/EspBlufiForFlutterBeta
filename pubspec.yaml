@@ -1,6 +1,6 @@
 name: esp_blufi_for_flutter
 description: EspBlufi plugin, use two library EspBlufiForiOS, EspBlufiForAndroid.
-version: 1.0.4
+version: 1.0.4+1
 homepage: https://github.com/Ksanbal/EspBlufiForFlutter
 repository: https://github.com/Ksanbal/EspBlufiForFlutter.git
 issue_tracker: https://github.com/Ksanbal/EspBlufiForFlutter/issues
