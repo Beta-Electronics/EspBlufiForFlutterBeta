@@ -129,9 +129,21 @@
 }
 
 -(void)postCustomData:(NSString *) data {
-    
     if (_blufiClient && data != nil) {
-        [_blufiClient postCustomData:[data dataUsingEncoding:NSUTF8StringEncoding]];
+        NSData *dataBytes;
+        
+        // Prova a decodificare da Base64
+        dataBytes = [[NSData alloc] initWithBase64EncodedString:data options:NSDataBase64DecodingIgnoreUnknownCharacters];
+        
+        if (dataBytes != nil && dataBytes.length > 0) {
+            NSLog(@"postCustomData: Decoded Base64: %lu bytes", (unsigned long)dataBytes.length);
+        } else {
+            // Fallback a UTF-8 string (backward compatibility)
+            dataBytes = [data dataUsingEncoding:NSUTF8StringEncoding];
+            NSLog(@"postCustomData: Using UTF-8 string: %lu bytes", (unsigned long)dataBytes.length);
+        }
+        
+        [_blufiClient postCustomData:dataBytes];
     }
 }
 
@@ -245,14 +257,12 @@
 
 - (void)blufi:(BlufiClient *)client didReceiveCustomData:(NSData *)data status:(BlufiStatusCode)status {
     if (status == StatusSuccess) {
-        NSString *customString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-        customString = [customString stringByReplacingOccurrencesOfString:@"\"" withString:@"\\\""];
-           [self updateMessage:[self makeJsonWithCommand:@"receive_device_custom_data" data:customString]];
-    }
-    else {
+        // Converti byte in Base64
+        NSString *base64Data = [data base64EncodedStringWithOptions:0];
+        [self updateMessage:[self makeJsonWithCommand:@"receive_device_custom_data" data:base64Data]];
+    } else {
         [self updateMessage:[self makeJsonWithCommand:@"receive_device_custom_data" data:@"0"]];
     }
-   
 }
 
 - (void)updateMessage:(NSString *)message {

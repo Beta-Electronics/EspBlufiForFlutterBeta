@@ -289,11 +289,27 @@ public class BlufiPlugin implements FlutterPlugin, ActivityAware, MethodCallHand
   /**
    * Try to post custom data
    */
+  // private void postCustomData(String dataString) {
+  //   if (dataString != null) {
+  //     mBlufiClient.postCustomData(dataString.getBytes());
+  //   }
+  // }
+
   private void postCustomData(String dataString) {
-    if (dataString != null) {
-      mBlufiClient.postCustomData(dataString.getBytes());
+    if (dataString != null && mBlufiClient != null) {
+        byte[] dataBytes;
+        try {
+            // Prova a decodificare da Base64
+            dataBytes = android.util.Base64.decode(dataString, android.util.Base64.NO_WRAP);
+            Log.v("postCustomData", "Decoded Base64: " + dataBytes.length + " bytes");
+        } catch (IllegalArgumentException e) {
+            // Se non è Base64 valido, usa come stringa UTF-8 (backward compatibility)
+            dataBytes = dataString.getBytes();
+            Log.v("postCustomData", "Using UTF-8 string: " + dataBytes.length + " bytes");
+        }
+        mBlufiClient.postCustomData(dataBytes);
     }
-  }
+}
 
   private void onGattConnected() {
     mConnected = true;
@@ -504,16 +520,45 @@ public class BlufiPlugin implements FlutterPlugin, ActivityAware, MethodCallHand
       }
     }
 
+
+//     @Override
+//     public void onReceiveCustomData(BlufiClient client, int status, byte[] data) {
+//       if (status == STATUS_SUCCESS) {
+//         String customStr = new String(data);
+//           customStr = customStr.replace("\"","\\\"");
+// //        updateMessage(String.format("Receive custom data:\n%s", customStr));
+//         updateMessage(makeJson("receive_device_custom_data",customStr));
+//       } else {
+//         updateMessage(makeJson("receive_device_custom_data","0"));
+// //        updateMessage("Receive custom data error, code=" + status);
+//       }
+//     }
     @Override
     public void onReceiveCustomData(BlufiClient client, int status, byte[] data) {
       if (status == STATUS_SUCCESS) {
-        String customStr = new String(data);
-          customStr = customStr.replace("\"","\\\"");
-//        updateMessage(String.format("Receive custom data:\n%s", customStr));
-        updateMessage(makeJson("receive_device_custom_data",customStr));
+        // Converti byte in Base64
+        String base64Data = android.util.Base64.encodeToString(data, android.util.Base64.NO_WRAP);
+        updateMessage(makeJson("receive_device_custom_data", base64Data));
       } else {
         updateMessage(makeJson("receive_device_custom_data","0"));
-//        updateMessage("Receive custom data error, code=" + status);
+      }
+    }
+
+    private void updateMessageWithBytes(String key, byte[] data) {
+      Log.v("message", key + " with " + data.length + " bytes");
+      if (sink != null) {
+        // Crea un Map per passare key e byte array
+        Map<String, Object> message = new HashMap<>();
+        message.put("key", key);
+        message.put("value", data);  // Passa byte[] direttamente
+        message.put("address", mDevice != null ? mDevice.getAddress() : "");
+        
+        handler.post(new Runnable() {
+          @Override
+          public void run() {
+            sink.success(message);  // Invia Map invece di String JSON
+          }
+        });
       }
     }
 
@@ -538,6 +583,8 @@ public class BlufiPlugin implements FlutterPlugin, ActivityAware, MethodCallHand
               });
     }
   }
+
+  
 
   private String makeJson(String command, String data) {
 
