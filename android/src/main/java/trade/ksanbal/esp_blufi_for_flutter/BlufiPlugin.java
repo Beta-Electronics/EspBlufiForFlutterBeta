@@ -122,64 +122,72 @@ public class BlufiPlugin implements FlutterPlugin, ActivityAware, MethodCallHand
   }
 
   @Override
-  public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
-    if (call.method.equals("getPlatformVersion")) {
-      result.success("Android " + Build.VERSION.RELEASE);
+public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
+  if (call.method.equals("getPlatformVersion")) {
+    result.success("Android " + Build.VERSION.RELEASE);
+  }
+  else if (call.method.equals("scanDeviceInfo")) {
+    if (ContextCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_FINE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED) {
+      ActivityCompat.requestPermissions(
+              activityBinding.getActivity(),
+              new String[] {
+                      Manifest.permission.ACCESS_FINE_LOCATION
+              },
+              REQUEST_FINE_LOCATION_PERMISSIONS);
     }
-    else if (call.method.equals("scanDeviceInfo")) {
-      if (ContextCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_FINE_LOCATION)
-              != PackageManager.PERMISSION_GRANTED) {
-        ActivityCompat.requestPermissions(
-                activityBinding.getActivity(),
-                new String[] {
-                        Manifest.permission.ACCESS_FINE_LOCATION
-                },
-                REQUEST_FINE_LOCATION_PERMISSIONS);
-      }
-        String filter = call.argument("filter");
-        scan(filter, result);
-    }
-    else if (call.method.equals("stopScan")) {
-        stopScan();
-    }
-    else if (call.method.equals("connectPeripheral")) {
-      String deviceId = call.argument("peripheral");
-      if (deviceId != null) {
-        connectDevice(mDeviceMap.get(deviceId).getDevice());
-        result.success(true);
-      }
-      else {
-        result.success(false);
-      }
-    }
-    else if (call.method.equals("requestCloseConnection")) {
-      disconnectGatt();
-    }
-    else if (call.method.equals("negotiateSecurity")) {
-      negotiateSecurity();
-    }
-    else if (call.method.equals("requestDeviceVersion")) {
-      requestDeviceVersion();
-    }
-    else if (call.method.equals("configProvision")) {
-      String userName = call.argument("username");
-      String password = call.argument("password");
-      configure(userName, password);
-    }
-    else if (call.method.equals("requestDeviceStatus")) {
-      requestDeviceStatus();
-    }
-    else if (call.method.equals("requestDeviceScan")) {
-      requestDeviceWifiScan();
-    }
-    else if (call.method.equals("postCustomData")) {
-      String dataStr = call.argument("custom_data");
-      postCustomData(dataStr);
+      String filter = call.argument("filter");
+      scan(filter, result);
+  }
+  else if (call.method.equals("stopScan")) {
+      stopScan();
+      result.success(true);  
+  }
+  else if (call.method.equals("connectPeripheral")) {
+    String deviceId = call.argument("peripheral");
+    if (deviceId != null) {
+      connectDevice(mDeviceMap.get(deviceId).getDevice());
+      result.success(true);
     }
     else {
-      result.notImplemented();
+      result.success(false);
     }
   }
+  else if (call.method.equals("requestCloseConnection")) {
+    disconnectGatt();
+    result.success(true);  
+  }
+  else if (call.method.equals("negotiateSecurity")) {
+    negotiateSecurity();
+    result.success(true); 
+  }
+  else if (call.method.equals("requestDeviceVersion")) {
+    requestDeviceVersion();
+    result.success(true);  
+  }
+  else if (call.method.equals("configProvision")) {
+    String userName = call.argument("username");
+    String password = call.argument("password");
+    configure(userName, password);
+    result.success(true);  
+  }
+  else if (call.method.equals("requestDeviceStatus")) {
+    requestDeviceStatus();
+    result.success(true);  
+  }
+  else if (call.method.equals("requestDeviceScan")) {
+    requestDeviceWifiScan();
+    result.success(true);  
+  }
+  else if (call.method.equals("postCustomData")) {
+    String dataStr = call.argument("custom_data");
+    postCustomData(dataStr);
+    result.success(true);  
+  }
+  else {
+    result.notImplemented();
+  }
+}
 
   @Override
   public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
@@ -295,20 +303,22 @@ public class BlufiPlugin implements FlutterPlugin, ActivityAware, MethodCallHand
   //   }
   // }
 
-  private void postCustomData(String dataString) {
-    if (dataString != null && mBlufiClient != null) {
-        byte[] dataBytes;
-        try {
-            // Prova a decodificare da Base64
-            dataBytes = android.util.Base64.decode(dataString, android.util.Base64.NO_WRAP);
-            Log.v("postCustomData", "Decoded Base64: " + dataBytes.length + " bytes");
-        } catch (IllegalArgumentException e) {
-            // Se non è Base64 valido, usa come stringa UTF-8 (backward compatibility)
-            dataBytes = dataString.getBytes();
-            Log.v("postCustomData", "Using UTF-8 string: " + dataBytes.length + " bytes");
-        }
-        mBlufiClient.postCustomData(dataBytes);
+private void postCustomData(String dataString) {
+  Log.w("BlufiPlugin", ">>> postCustomData called, dataString length=" + (dataString != null ? dataString.length() : 0));
+  if (dataString != null && mBlufiClient != null) {
+    byte[] dataBytes;
+    try {
+      dataBytes = android.util.Base64.decode(dataString, android.util.Base64.NO_WRAP);
+      Log.w("BlufiPlugin", ">>> Decoded Base64: " + dataBytes.length + " bytes, sending...");
+    } catch (IllegalArgumentException e) {
+      dataBytes = dataString.getBytes();
+      Log.w("BlufiPlugin", ">>> Using UTF-8: " + dataBytes.length + " bytes, sending...");
     }
+    mBlufiClient.postCustomData(dataBytes);
+    Log.w("BlufiPlugin", ">>> postCustomData sent to mBlufiClient");
+  } else {
+    Log.w("BlufiPlugin", ">>> postCustomData SKIPPED - dataString=" + (dataString != null) + ", mBlufiClient=" + (mBlufiClient != null));
+  }
 }
 
   private void onGattConnected() {
@@ -463,19 +473,48 @@ public class BlufiPlugin implements FlutterPlugin, ActivityAware, MethodCallHand
       }
     }
 
+//     @Override
+//     public void onDeviceStatusResponse(BlufiClient client, int status, BlufiStatusResponse response) {
+//       if (status == STATUS_SUCCESS) {
+//         updateMessage(makeJson("device_status","1"));
+// //        updateMessage(String.format("Receive device status response:\n%s"));
+//         if (response.isStaConnectWifi()){
+//           updateMessage(makeJson("device_wifi_connect","1"));
+//         } else {
+//           updateMessage(makeJson("device_wifi_connect","0"));
+//         }
+//       } else {
+//         updateMessage(makeJson("device_status","0"));
+// //        updateMessage("Device status response error, code=" + status);
+//       }
+//     }
+
     @Override
     public void onDeviceStatusResponse(BlufiClient client, int status, BlufiStatusResponse response) {
       if (status == STATUS_SUCCESS) {
-        updateMessage(makeJson("device_status","1"));
-//        updateMessage(String.format("Receive device status response:\n%s"));
-        if (response.isStaConnectWifi()){
+        // Invia status completo come JSON
+        String ssid = response.getStaSSID();
+        String bssid = response.getStaBSSID();
+        boolean connected = response.isStaConnectWifi();
+        int opMode = response.getOpMode();
+        
+        String statusJson = String.format(
+          "{\"connected\":%s,\"ssid\":\"%s\",\"bssid\":\"%s\",\"opMode\":%d}",
+          connected ? "true" : "false",
+          ssid != null ? ssid : "",
+          bssid != null ? bssid : "",
+          opMode
+        );
+        
+        updateMessage(makeJsonRaw("device_status", statusJson));
+        
+        if (connected) {
           updateMessage(makeJson("device_wifi_connect","1"));
         } else {
           updateMessage(makeJson("device_wifi_connect","0"));
         }
       } else {
         updateMessage(makeJson("device_status","0"));
-//        updateMessage("Device status response error, code=" + status);
       }
     }
 
@@ -535,6 +574,7 @@ public class BlufiPlugin implements FlutterPlugin, ActivityAware, MethodCallHand
 //     }
     @Override
     public void onReceiveCustomData(BlufiClient client, int status, byte[] data) {
+      Log.w("BlufiPlugin", "onReceiveCustomData called, status=" + status + ", length=" + (data != null ? data.length : 0));
       if (status == STATUS_SUCCESS) {
         // Converti byte in Base64
         String base64Data = android.util.Base64.encodeToString(data, android.util.Base64.NO_WRAP);
@@ -593,6 +633,14 @@ public class BlufiPlugin implements FlutterPlugin, ActivityAware, MethodCallHand
       address = mDevice.getAddress();
     }
     return String.format("{\"key\":\"%s\",\"value\":\"%s\",\"address\":\"%s\"}", command, data, address);
+  }
+  
+  private String makeJsonRaw(String command, String rawJson) {
+    String address = "";
+    if (mDevice != null) {
+      address = mDevice.getAddress();
+    }
+    return String.format("{\"key\":\"%s\",\"value\":%s,\"address\":\"%s\"}", command, rawJson, address);
   }
 
   private String makeScanDeviceJson(String address, String name, int rssi) {
