@@ -298,47 +298,42 @@
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
   if ([@"getPlatformVersion" isEqualToString:call.method]) {
     result([@"iOS " stringByAppendingString:[[UIDevice currentDevice] systemVersion]]);
-    } else if ([@"scanDeviceInfo" isEqualToString:call.method]) {
-        
-        NSString *filter = call.arguments[@"filter"];
-        if (filter != nil) {
-             self.filterContent = filter;
-        }
-        [self scanDeviceInfo];
-        
-    }
-    else if ([@"stopScan" isEqualToString:call.method]) {
-        [self stopScan];
-    }
-    else if ([@"connectPeripheral" isEqualToString:call.method]) {
-        NSString *peripheral = call.arguments[@"peripheral"];
-        [self connectPeripheral:self.peripheralDictionary[peripheral]];
-    }
-    else if ([@"requestCloseConnection" isEqualToString:call.method]) {
-        [self requestCloseConnection];
-    }
-    else if ([@"negotiateSecurity" isEqualToString:call.method]) {
-        [self negotiateSecurity];
-    }
-    else if ([@"requestDeviceVersion" isEqualToString:call.method]) {
-        [self requestDeviceVersion];
-    }
-    else if ([@"configProvision" isEqualToString:call.method]) {
-            NSString *username = call.arguments[@"username"];
-            NSString *password = call.arguments[@"password"];
-          [self configProvisionWithSSID:username password:password];
-    }
-    else if ([@"requestDeviceStatus" isEqualToString:call.method]) {
-        [self requestDeviceStatus];
-    }
-    else if ([@"requestDeviceScan" isEqualToString:call.method]) {
-        [self requestDeviceScan];
-    }
-    else if ([@"postCustomData" isEqualToString:call.method]) {
-        NSString *customData = call.arguments[@"custom_data"];
-        [self postCustomData:customData];
-    }
-  else {
+  } else if ([@"scanDeviceInfo" isEqualToString:call.method]) {
+      NSString *filter = call.arguments[@"filter"];
+      [self scanDeviceInfo:filter];
+      result(@YES);  
+  } else if ([@"stopScan" isEqualToString:call.method]) {
+      [self stopScan];
+      result(@YES);  
+  } else if ([@"connectPeripheral" isEqualToString:call.method]) {
+      NSString *peripheralAddress = call.arguments[@"peripheral"];
+      [self connectPeripheral: peripheralAddress];
+      result(@YES);  
+  } else if ([@"requestCloseConnection" isEqualToString:call.method]) {
+      [self requestCloseConnection];
+      result(@YES);  
+  } else if ([@"negotiateSecurity" isEqualToString:call.method]) {
+      [self negotiateSecurity];
+      result(@YES);  
+  } else if ([@"requestDeviceVersion" isEqualToString:call.method]) {
+      [self requestDeviceVersion];
+      result(@YES);  
+  } else if ([@"requestDeviceStatus" isEqualToString:call.method]) {
+      [self requestDeviceStatus];
+      result(@YES);  
+  } else if ([@"requestDeviceScan" isEqualToString:call.method]) {
+      [self requestDeviceWifiScan];
+      result(@YES);  
+  } else if ([@"configProvision" isEqualToString:call.method]) {
+      NSString *userName = call.arguments[@"username"];
+      NSString *password = call.arguments[@"password"];
+      [self configProvision:userName password:password];
+      result(@YES);  
+  } else if ([@"postCustomData" isEqualToString:call.method]) {
+      NSString *dataStr = call.arguments[@"custom_data"];
+      [self postCustomData:dataStr];
+      result(@YES);  
+  } else {
     result(FlutterMethodNotImplemented);
   }
 }
