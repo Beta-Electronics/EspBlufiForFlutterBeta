@@ -300,39 +300,40 @@
     result([@"iOS " stringByAppendingString:[[UIDevice currentDevice] systemVersion]]);
   } else if ([@"scanDeviceInfo" isEqualToString:call.method]) {
       NSString *filter = call.arguments[@"filter"];
-      [self scanDeviceInfo:filter];
-      result(@YES);  
+      self.filterContent = filter;  // <-- Salva il filtro
+      [self scanDeviceInfo];        // <-- Senza parametro
+      result(@YES);
   } else if ([@"stopScan" isEqualToString:call.method]) {
       [self stopScan];
-      result(@YES);  
+      result(@YES);
   } else if ([@"connectPeripheral" isEqualToString:call.method]) {
       NSString *peripheralAddress = call.arguments[@"peripheral"];
       [self connectPeripheral: peripheralAddress];
-      result(@YES);  
+      result(@YES);
   } else if ([@"requestCloseConnection" isEqualToString:call.method]) {
       [self requestCloseConnection];
-      result(@YES);  
+      result(@YES);
   } else if ([@"negotiateSecurity" isEqualToString:call.method]) {
       [self negotiateSecurity];
-      result(@YES);  
+      result(@YES);
   } else if ([@"requestDeviceVersion" isEqualToString:call.method]) {
       [self requestDeviceVersion];
-      result(@YES);  
+      result(@YES);
   } else if ([@"requestDeviceStatus" isEqualToString:call.method]) {
       [self requestDeviceStatus];
-      result(@YES);  
+      result(@YES);
   } else if ([@"requestDeviceScan" isEqualToString:call.method]) {
-      [self requestDeviceWifiScan];
-      result(@YES);  
+      [self requestDeviceScan];     // <-- Era requestDeviceWifiScan
+      result(@YES);
   } else if ([@"configProvision" isEqualToString:call.method]) {
       NSString *userName = call.arguments[@"username"];
       NSString *password = call.arguments[@"password"];
-      [self configProvision:userName password:password];
-      result(@YES);  
+      [self configProvison:userName password:password];  // <-- Nota: typo "Provison" nel metodo originale
+      result(@YES);
   } else if ([@"postCustomData" isEqualToString:call.method]) {
       NSString *dataStr = call.arguments[@"custom_data"];
       [self postCustomData:dataStr];
-      result(@YES);  
+      result(@YES);
   } else {
     result(FlutterMethodNotImplemented);
   }
