@@ -175,12 +175,14 @@
     
 }
 
-- (void)blufi:(BlufiClient *)client gattPrepared:(BlufiStatusCode)status service:(CBService *)service writeChar:(CBCharacteristic *)writeChar notifyChar:(CBCharacteristic *)notifyChar {
+- (void)blufi:(BlufiClient *)client :(BlufiStatusCode)status service:(CBService *)service writeChar:(CBCharacteristic *)writeChar notifyChar:(CBCharacteristic *)notifyChar {
     if (status == StatusSuccess) {
         self.connected = YES;
         [self updateMessage:[self makeJsonWithCommand:@"blufi_connect_prepared" data:@"1"]];
+        [self updateMessage:[self makeJsonWithCommand:@"discover_service" data:@"1"]];
     } else {
         [self onDisconnected];
+        [self updateMessage:[self makeJsonWithCommand:@"discover_service" data:@"0"]];
         if (!service) {
             [self updateMessage:[self makeJsonWithCommand:@"blufi_connect_prepared" data:@"2"]];
         } else if (!writeChar) {
