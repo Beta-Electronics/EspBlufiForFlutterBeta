@@ -326,11 +326,11 @@
       [self requestDeviceScan];     // <-- Era requestDeviceWifiScan
       result(@YES);
   } else if ([@"configProvision" isEqualToString:call.method]) {
-      NSString *userName = call.arguments[@"username"];
-      NSString *password = call.arguments[@"password"];
-      [self configProvison:userName password:password];  // <-- Nota: typo "Provison" nel metodo originale
-      result(@YES);
-  } else if ([@"postCustomData" isEqualToString:call.method]) {
+    NSString *userName = call.arguments[@"username"];
+    NSString *password = call.arguments[@"password"];
+    [self configProvisionWithSSID:userName password:password];
+    result(@YES);
+} else if ([@"postCustomData" isEqualToString:call.method]) {
       NSString *dataStr = call.arguments[@"custom_data"];
       [self postCustomData:dataStr];
       result(@YES);
