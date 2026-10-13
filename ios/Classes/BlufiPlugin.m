@@ -228,8 +228,17 @@
 - (void)blufi:(BlufiClient *)client didReceiveDeviceStatusResponse:(BlufiStatusResponse *)response status:(BlufiStatusCode)status {
    
     if (status == StatusSuccess) {
-        [self updateMessage:[self makeJsonWithCommand:@"device_status" data:@"1"]];
-        
+        // Invia status completo come JSON (stesso formato di Android)
+        NSDictionary *statusInfo = @{
+            @"connected": @([response isStaConnectWiFi]),
+            @"ssid": response.staSsid ?: @"",
+            @"bssid": response.staBssid ?: @"",
+            @"opMode": @((int)response.opMode)
+        };
+        NSData *statusData = [NSJSONSerialization dataWithJSONObject:statusInfo options:0 error:nil];
+        NSString *statusJson = [[NSString alloc] initWithData:statusData encoding:NSUTF8StringEncoding];
+        [self updateMessage:[self makeJsonRawWithCommand:@"device_status" rawJson:statusJson]];
+
         if ([response isStaConnectWiFi]) {
           [self updateMessage:[self makeJsonWithCommand:@"device_wifi_connect" data:@"1"]];
         } else {
@@ -287,6 +296,15 @@
     }
     
     return [NSString stringWithFormat:@"{\"key\":\"%@\",\"value\":\"%@\",\"address\":\"%@\"}",command, data, address];
+}
+
+-(NSString *)makeJsonRawWithCommand:(NSString*)command rawJson:(NSString *)rawJson {
+    NSString *address = @"";
+    if (self.device != nil) {
+        address = self.device.uuid.UUIDString;
+    }
+
+    return [NSString stringWithFormat:@"{\"key\":\"%@\",\"value\":%@,\"address\":\"%@\"}",command, rawJson, address];
 }
 
 -(NSString *)makeScanDeviceJsonWithAddress:(NSString*)address name:(NSString *)name rssi: (int)rssi {
