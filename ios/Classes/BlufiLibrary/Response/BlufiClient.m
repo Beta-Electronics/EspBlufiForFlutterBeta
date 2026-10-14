@@ -72,6 +72,7 @@ enum {
 @property(assign, atomic)NSInteger readSequence;
 
 @property(strong, nonatomic)BlufiNotifyData *notifyData;
+@property(assign, atomic)BOOL discardUntilFrameEnd;
 
 @property(strong, nonatomic)NSData *aesKey;
 
@@ -396,7 +397,10 @@ enum {
     Byte sequence = buf[2];
     Byte expectSequence = (++_readSequence) & 0xff;
     if (sequence != expectSequence) {
-        NSLog(@"parseNotification invalid sequence");
+        // Risincronizza sul sequence ricevuto: senza questo, dopo un solo
+        // pacchetto perso tutte le notifiche successive verrebbero scartate.
+        NSLog(@"parseNotification invalid sequence: expected=%d got=%d, resync", expectSequence, sequence);
+        _readSequence = sequence;
         return NotifyInvalidSequence;
     }
     
@@ -1080,6 +1084,12 @@ enum {
 
 - (void)centralManager:(CBCentralManager *)central didConnectPeripheral:(CBPeripheral *)peripheral {
     // Connect BLE successfully
+    // L'ESP azzera i sequence a ogni connessione
+    _sendSequence = -1;
+    _readSequence = -1;
+    _notifyData = nil;
+    _discardUntilFrameEnd = NO;
+
     CBUUID *uuid = [CBUUID UUIDWithString:UUID_SERVICE];
     NSArray<CBUUID *> *filters = @[uuid];
     [peripheral discoverServices:filters];
@@ -1238,14 +1248,25 @@ enum {
         NotifyStatus status = [self parseNotification:value notification:_notifyData];
         switch (status) {
             case NotifyComplete:
-                [self parseBlufiNotifyData:_notifyData];
+                if (_discardUntilFrameEnd) {
+                    _discardUntilFrameEnd = NO;
+                } else {
+                    [self parseBlufiNotifyData:_notifyData];
+                }
                 _notifyData = nil;
                 break;
             case NotifyHasFrag:
+                if (_discardUntilFrameEnd) {
+                    _notifyData = nil;
+                }
                 NSLog(@"parseNotification wait next");
                 break;
             default:
+                // Frame corrotto: scarta i frammenti già ricevuti e quelli
+                // restanti dello stesso frame, fino all'ultimo frammento.
                 NSLog(@"parseNotification failed");
+                _notifyData = nil;
+                _discardUntilFrameEnd = YES;
                 [self onError:StatusInvalidData];
                 break;
         }

@@ -82,6 +82,7 @@ public class BlufiClientImpl implements BlufiParameter {
     private LinkedBlockingQueue<Integer> mAck;
 
     private volatile BlufiNotifyData mNotifyData;
+    private volatile boolean mDiscardUntilFrameEnd = false;
 
     private byte[] mAESKey;
 
@@ -446,8 +447,13 @@ public class BlufiClientImpl implements BlufiParameter {
         }
 
         int sequence = toInt(response[2]);
-        if (sequence != (mReadSequence.incrementAndGet() & 0xff)) {
-            Log.w(TAG, "parseNotification read sequence wrong");
+        int expectedSequence = mReadSequence.incrementAndGet() & 0xff;
+        if (sequence != expectedSequence) {
+            // Risincronizza sul sequence ricevuto: senza questo, dopo un solo
+            // pacchetto perso tutte le notifiche successive verrebbero scartate.
+            Log.w(TAG, "parseNotification read sequence wrong: expected=" + expectedSequence
+                    + " got=" + sequence + ", resync");
+            mReadSequence.set(sequence);
             return -3;
         }
 
@@ -1175,6 +1181,14 @@ public class BlufiClientImpl implements BlufiParameter {
             mBlufiMTU = -1;
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
+                    // L'ESP azzera i sequence a ogni connessione: con autoConnect
+                    // Android può riconnettersi da solo sullo stesso client, quindi
+                    // vanno azzerati anche qui.
+                    mSendSequence.set(-1);
+                    mReadSequence.set(-1);
+                    mNotifyData = null;
+                    mDiscardUntilFrameEnd = false;
+
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                         gatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH);
                     }
@@ -1242,7 +1256,16 @@ public class BlufiClientImpl implements BlufiParameter {
                 // lt 0 is error, eq 0 is complete, gt 0 is continue
                 int parse = parseNotification(data, mNotifyData);
                 if (parse < 0) {
+                    // Frame corrotto: scarta i frammenti già ricevuti e quelli
+                    // restanti dello stesso frame, fino all'ultimo frammento.
+                    mNotifyData = null;
+                    mDiscardUntilFrameEnd = true;
                     onError(BlufiCallback.CODE_INVALID_NOTIFICATION);
+                } else if (mDiscardUntilFrameEnd) {
+                    mNotifyData = null;
+                    if (parse == 0) {
+                        mDiscardUntilFrameEnd = false;
+                    }
                 } else if (parse == 0) {
                     parseBlufiNotifyData(mNotifyData);
                     mNotifyData = null;
